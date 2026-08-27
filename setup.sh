@@ -51,8 +51,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-_mango_step() { echo ""; echo "==> $*"; }
-_mango_info()  { echo "    $*"; }
+# Status goes to stderr so command substitutions (e.g. root="$(_mango_resolve_root)")
+# only capture intentional return values on stdout.
+_mango_step() { echo "" >&2; echo "==> $*" >&2; }
+_mango_info()  { echo "    $*" >&2; }
 
 _mango_confirm() {
   local prompt="$1"
@@ -91,7 +93,8 @@ _mango_resolve_root() {
     return 0
   fi
 
-  # Remote / curl install — use fixed install dir
+  # Remote / curl install — use fixed install dir.
+  # Only the path is printed on stdout (captured by callers).
   local dir="$MANGO_INSTALL_DIR"
   if [[ -d "$dir/.git" && -f "$dir/requirements.txt" ]]; then
     if [[ "$DO_GIT_UPDATE" -eq 1 ]]; then
@@ -106,6 +109,9 @@ _mango_resolve_root() {
     _mango_step "Cloning Mango to $dir"
     command -v git &>/dev/null || { echo "Error: git is required for remote install." >&2; exit 1; }
     git clone --depth 1 --branch "$MANGO_BRANCH" "$MANGO_REPO_URL" "$dir"
+  elif [[ ! -f "$dir/requirements.txt" || ! -f "$dir/mango" ]]; then
+    echo "Error: $dir exists but is not a Mango install. Remove it or set MANGO_INSTALL_DIR." >&2
+    exit 1
   fi
 
   printf '%s' "$dir"
