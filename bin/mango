@@ -4,6 +4,33 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Lightweight subcommands (no UI libs — must work during uninstall / partial installs)
+case "${1:-}" in
+  doctor)
+    shift
+    exec "$ROOT/bin/mango-doctor" "$@"
+    ;;
+  uninstall)
+    shift
+    exec "$ROOT/uninstall.sh" "$@"
+    ;;
+  help|--help|-h)
+    cat <<'EOF'
+Mango — offline toolkit hub
+
+Usage:
+  mango                 Open the interactive UI
+  mango doctor          Check dependencies
+  mango uninstall       Remove global commands (and optional install dir)
+  mango uninstall --purge
+  mango uninstall --keep-data
+  mango help            Show this help
+EOF
+    exit 0
+    ;;
+esac
+
 # shellcheck source=../lib/mango-ui.sh
 source "$ROOT/lib/mango-ui.sh"
 # shellcheck source=../lib/mango-deps.sh
@@ -229,17 +256,32 @@ _mango_run_conversion() {
   IFS=',' read -ra ext_array <<< "$in_exts"
 
   local input output
-  if ! ui_prompt_file "Path to input file (drag & drop works)" input "${ext_array[@]}"; then
+  local -a inputs=()
+  if [[ "$tool_id" == "jpg-to-pdf" ]]; then
+    if ! ui_prompt_image_folder "Path to images or a folder (drag & drop works)" inputs "${ext_array[@]}"; then
+      ui_message info "Cancelled."
+      ui_pause
+      return 0
+    fi
+    input="${inputs[0]}"
+  elif ! ui_prompt_file "Path to input file (drag & drop works)" input "${ext_array[@]}"; then
     ui_message info "Cancelled."
     ui_pause
     return 0
+  else
+    inputs=("$input")
   fi
 
-  local suggested
+  local suggested out_dir
+  out_dir="$(dirname "$input")"
   if [[ "$tool_id" == "split-pdf" ]]; then
     suggested="$(dirname "$input")/$(basename "${input%.*}")-pages"
   elif [[ "$tool_id" == "pdf-to-jpg" ]]; then
     suggested="$(dirname "$input")/$(basename "${input%.*}")-jpg"
+  elif [[ "$tool_id" == "jpg-to-pdf" && ${#inputs[@]} -gt 1 ]]; then
+    suggested=$(ui_suggest_merged_output "$out_dir" "merged_pdf" "pdf")
+  elif [[ "$tool_id" == "merge-pdf" ]]; then
+    suggested=$(ui_suggest_merged_output "$out_dir" "merged_pdf" "pdf")
   elif [[ "$tool_id" == "compress-video" ]]; then
     suggested="$(dirname "$input")/$(basename "${input%.*}")_compressed.mp4"
   elif [[ "$out_ext" == "same" ]]; then
@@ -251,6 +293,24 @@ _mango_run_conversion() {
 
   if [[ "$out_ext" == "same" ]]; then
     :
+  elif [[ "$tool_id" == "jpg-to-pdf" ]]; then
+    ui_conversion_preview_multi "$suggested" "Preview" "${inputs[@]}"
+    ui_box_open "Name this PDF"
+    ui_box_line "  ${MANGO_DIM}Default is dated so it won't overwrite an older merge.${MANGO_RESET}"
+    ui_box_line "  ${MANGO_DIM}Type a name (e.g. slides) or a full path. Enter keeps the default.${MANGO_RESET}"
+    ui_box_close
+    echo ""
+    ui_prompt_default "Output filename" "$(basename "$suggested")" output
+    output=$(ui_resolve_output_path "$output" "$out_dir" "pdf")
+  elif [[ "$tool_id" == "merge-pdf" ]]; then
+    ui_conversion_preview "$input" "$suggested" "Preview"
+    ui_box_open "Name this PDF"
+    ui_box_line "  ${MANGO_DIM}Default is dated so it won't overwrite an older merge.${MANGO_RESET}"
+    ui_box_line "  ${MANGO_DIM}Type a name (e.g. packet) or a full path. Enter keeps the default.${MANGO_RESET}"
+    ui_box_close
+    echo ""
+    ui_prompt_default "Output filename" "$(basename "$suggested")" output
+    output=$(ui_resolve_output_path "$output" "$out_dir" "pdf")
   else
     ui_conversion_preview "$input" "$suggested" "Preview"
     ui_prompt_default "Output path" "$suggested" output
@@ -273,7 +333,11 @@ _mango_run_conversion() {
     compress_ratio="$_MANGO_VC_RATIO"
   fi
 
-  ui_conversion_preview "$input" "$output" "Ready to convert"
+  if [[ "$tool_id" == "jpg-to-pdf" ]]; then
+    ui_conversion_preview_multi "$output" "Ready to convert" "${inputs[@]}"
+  else
+    ui_conversion_preview "$input" "$output" "Ready to convert"
+  fi
   if [[ "$tool_id" == "compress-video" ]]; then
     ui_box_open "Ratio"
     if [[ -n "${_MANGO_VC_EST:-}" ]]; then
@@ -316,7 +380,7 @@ _mango_run_conversion() {
       cmd+=("$input" "-o" "$output")
       ;;
     jpg-to-pdf)
-      cmd+=("$input" "-o" "$output")
+      cmd+=("${inputs[@]}" "-o" "$output")
       ;;
     merge-pdf)
       cmd+=("$input" "-o" "$output")
@@ -518,10 +582,6 @@ _mango_main_menu() {
 # ── Entry ───────────────────────────────────────────────────────────────────────
 
 main() {
-  if [[ "${1:-}" == "doctor" ]]; then
-    exec "$ROOT/bin/mango-doctor"
-  fi
-
   if [[ ! -t 0 || ! -t 1 ]]; then
     echo "Mango is an interactive terminal UI. Run it directly in your terminal:"
     echo "  mango"

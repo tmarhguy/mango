@@ -590,6 +590,37 @@ _mango_collect_matching_files() {
   return 0
 }
 
+_mango_collect_matching_in_dir() {
+  local dir="$1"
+  shift
+  local -a exts=("$@")
+  local -a found=()
+  local f ext pattern
+
+  shopt -s nullglob nocaseglob
+  for ext in "${exts[@]}"; do
+    ext=$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')
+    pattern="${dir}/*.${ext}"
+    for f in $pattern; do
+      [[ -f "$f" ]] && found+=("$f")
+    done
+  done
+  shopt -u nullglob nocaseglob
+
+  if [[ ${#found[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  local IFS=$'\n'
+  found=($(printf '%s\n' "${found[@]}" | LC_ALL=C sort -fu))
+
+  local item
+  for item in "${found[@]}"; do
+    printf '%s\n' "$item"
+  done
+  return 0
+}
+
 _mango_collect_all_files() {
   local f
   shopt -s nullglob
@@ -781,6 +812,9 @@ _mango_browse_item_content() {
       else
         text="${MANGO_CYAN}${name}/${MANGO_RESET}  ${MANGO_DIM}folder${MANGO_RESET}"
       fi
+      ;;
+    use)
+      text="${MANGO_GREEN}${MANGO_BOLD}✓ Use this folder${MANGO_RESET}  ${MANGO_DIM}${name}${MANGO_RESET}"
       ;;
     file)
       size=$(_mango_file_size "$browse_dir/$name")
@@ -1157,6 +1191,306 @@ ui_prompt_file() {
   done
 }
 
+# Multi-select image browser for Images → PDF.
+# Space toggles images; Enter converts selection (or opens folders / uses whole folder).
+# Returns 0 with selected paths in nameref array, 1 cancel, 2 type path.
+ui_browse_for_image_folder() {
+  local varname="$1"
+  shift
+  local -a allowed_exts=("$@")
+  local browse_dir browse_root filter_label title
+  local -a items=() files=() dirs=() checked=()
+  local selected=0 key old i n typ name line count file_start
+
+  browse_dir=$(_mango_expand_path "$(pwd)")
+  browse_root="$browse_dir"
+
+  _mango_img_picker_rebuild() {
+    items=()
+    files=()
+    dirs=()
+    checked=()
+    n=0
+    file_start=-1
+
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && files+=("$line")
+    done < <(_mango_collect_matching_in_dir "$browse_dir" "${allowed_exts[@]}") || true
+    n=${#files[@]}
+
+    if [[ "$n" -gt 0 ]]; then
+      if [[ "$n" -eq 1 ]]; then
+        items+=("use|1 image → one PDF")
+      else
+        items+=("use|${n} images → one PDF")
+      fi
+    fi
+
+    if [[ "$browse_dir" != "$browse_root" ]]; then
+      items+=("dir|..")
+    fi
+
+    shopt -s nullglob
+    local d dname
+    for d in "$browse_dir"/*/; do
+      [[ -d "$d" ]] || continue
+      dname=$(basename "$d")
+      [[ "$dname" == .* ]] && continue
+      if _mango_dir_has_matching_files "$d" "${allowed_exts[@]}"; then
+        dirs+=("$dname")
+      fi
+    done
+    shopt -u nullglob
+
+    if ((${#dirs[@]} > 0)); then
+      local IFS=$'\n'
+      dirs=($(printf '%s\n' "${dirs[@]}" | LC_ALL=C sort -f))
+      for dname in "${dirs[@]}"; do
+        items+=("dir|${dname}")
+      done
+    fi
+
+    file_start=${#items[@]}
+    local f base
+    for f in "${files[@]+"${files[@]}"}"; do
+      base=$(basename "$f")
+      items+=("file|${base}")
+      checked+=("0")
+    done
+  }
+
+  _mango_img_item_content() {
+    local index="$1"
+    local cur="$2"
+    local entry="$3"
+    local typ="${entry%%|*}"
+    local name="${entry#*|}"
+    local marker text size box=""
+    local fi=$((index - file_start))
+
+    if [[ "$index" -eq "$cur" ]]; then
+      marker="${MANGO_CYAN}${MANGO_BOLD}❯${MANGO_RESET}"
+    else
+      marker=" "
+    fi
+
+    case "$typ" in
+      use)
+        text="${MANGO_GREEN}${MANGO_BOLD}✓ ${name}${MANGO_RESET}"
+        ;;
+      dir)
+        if [[ "$name" == ".." ]]; then
+          text="${MANGO_YELLOW}../${MANGO_RESET}  ${MANGO_DIM}(parent)${MANGO_RESET}"
+        else
+          text="${MANGO_CYAN}${name}/${MANGO_RESET}  ${MANGO_DIM}folder${MANGO_RESET}"
+        fi
+        ;;
+      file)
+        size=$(_mango_file_size "$browse_dir/$name")
+        if [[ "${checked[$fi]}" == "1" ]]; then
+          box="${MANGO_GREEN}[x]${MANGO_RESET} "
+        else
+          box="${MANGO_DIM}[ ]${MANGO_RESET} "
+        fi
+        text="${box}${MANGO_WHITE}${name}${MANGO_RESET}  ${MANGO_DIM}${size}${MANGO_RESET}"
+        ;;
+      *)
+        text="${MANGO_DIM}${entry}${MANGO_RESET}"
+        ;;
+    esac
+    printf '%s' "  ${marker} ${text}"
+  }
+
+  _mango_img_picker_draw() {
+    local cur="$1"
+    local i row_start
+    _MANGO_ITEM_ROWS=()
+    _mango_tui_home
+    _mango_out ""
+    ui_box_open "$title"
+    if ((${#items[@]} == 0)); then
+      ui_box_line "  ${MANGO_DIM}No matching images under this folder.${MANGO_RESET}"
+    else
+      for i in "${!items[@]}"; do
+        row_start=$_MANGO_TUI_ROW
+        ui_box_line "$(_mango_img_item_content "$i" "$cur" "${items[$i]}")"
+        _MANGO_ITEM_ROWS+=("$row_start")
+      done
+    fi
+    ui_box_rule
+    ui_box_line "  ${MANGO_DIM}↑↓ move · Space toggle · Enter convert (needs [x]) · P path · Q cancel${MANGO_RESET}"
+    ui_box_close
+    _mango_out ""
+  }
+
+  while true; do
+    _mango_img_picker_rebuild
+    selected=0
+
+    if [[ ${#allowed_exts[@]} -gt 0 ]] && ! _mango_exts_is_any "${allowed_exts[@]}"; then
+      filter_label=$(_mango_format_ext_label "${allowed_exts[@]}")
+    else
+      filter_label="images"
+    fi
+    title="Pick images — ${filter_label} · $(_mango_short_path "$browse_dir")"
+
+    _mango_tui_enter
+    _mango_img_picker_draw "$selected"
+    local -a item_rows=("${_MANGO_ITEM_ROWS[@]}")
+    count=${#items[@]}
+
+    while true; do
+      key=$(_mango_read_nav_key)
+
+      case "$key" in
+        up)
+          [[ "$count" -gt 0 ]] || continue
+          old=$selected
+          selected=$(( (selected - 1 + count) % count ))
+          if [[ "$old" != "$selected" ]]; then
+            _mango_redraw_at "${item_rows[$old]}" "$(_mango_box_line_str "$(_mango_img_item_content "$old" "$selected" "${items[$old]}")")"
+            _mango_redraw_at "${item_rows[$selected]}" "$(_mango_box_line_str "$(_mango_img_item_content "$selected" "$selected" "${items[$selected]}")")"
+          fi
+          ;;
+        down)
+          [[ "$count" -gt 0 ]] || continue
+          old=$selected
+          selected=$(( (selected + 1) % count ))
+          if [[ "$old" != "$selected" ]]; then
+            _mango_redraw_at "${item_rows[$old]}" "$(_mango_box_line_str "$(_mango_img_item_content "$old" "$selected" "${items[$old]}")")"
+            _mango_redraw_at "${item_rows[$selected]}" "$(_mango_box_line_str "$(_mango_img_item_content "$selected" "$selected" "${items[$selected]}")")"
+          fi
+          ;;
+        " ")
+          [[ "$count" -gt 0 ]] || continue
+          typ="${items[$selected]%%|*}"
+          if [[ "$typ" != "file" ]]; then
+            continue
+          fi
+          i=$((selected - file_start))
+          if [[ "${checked[$i]}" == "1" ]]; then
+            checked[$i]=0
+          else
+            checked[$i]=1
+          fi
+          _mango_redraw_at "${item_rows[$selected]}" "$(_mango_box_line_str "$(_mango_img_item_content "$selected" "$selected" "${items[$selected]}")")"
+          ;;
+        enter|right)
+          [[ "$count" -gt 0 ]] || continue
+          typ="${items[$selected]%%|*}"
+          name="${items[$selected]#*|}"
+
+          if [[ "$typ" == "dir" ]]; then
+            _mango_tui_leave
+            if [[ "$name" == ".." ]]; then
+              browse_dir=$(_mango_expand_path "$browse_dir/..")
+            else
+              browse_dir=$(_mango_expand_path "$browse_dir/$name")
+            fi
+            break
+          fi
+
+          if [[ "$typ" == "use" ]]; then
+            _mango_tui_leave
+            eval "$varname=(\"\${files[@]}\")"
+            return 0
+          fi
+
+          if [[ "$typ" == "file" ]]; then
+            local -a picked=()
+            for ((i = 0; i < ${#files[@]}; i++)); do
+              if [[ "${checked[$i]}" == "1" ]]; then
+                picked+=("${files[$i]}")
+              fi
+            done
+            if [[ ${#picked[@]} -eq 0 ]]; then
+              # Nothing selected yet — mark the highlighted image; Enter again to convert.
+              i=$((selected - file_start))
+              checked[$i]=1
+              _mango_redraw_at "${item_rows[$selected]}" "$(_mango_box_line_str "$(_mango_img_item_content "$selected" "$selected" "${items[$selected]}")")"
+              continue
+            fi
+            _mango_tui_leave
+            eval "$varname=(\"\${picked[@]}\")"
+            return 0
+          fi
+          ;;
+        p|P)
+          _mango_tui_leave
+          return 2
+          ;;
+        q|Q|esc)
+          _mango_tui_leave
+          return 1
+          ;;
+      esac
+    done
+  done
+}
+
+# Resolve selected images: multi-select in a folder, or type a folder/file path.
+# Fills nameref array with chosen image paths (selection order / name order for whole folder).
+ui_prompt_image_folder() {
+  local message="$1"
+  local varname="$2"
+  shift 2
+  local -a allowed_exts=("$@")
+
+  _mango_load_images_from_dir() {
+    local dir="$1"
+    local -a dir_files=()
+    local line
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && dir_files+=("$line")
+    done < <(_mango_collect_matching_in_dir "$dir" "${allowed_exts[@]}") || true
+    if [[ ${#dir_files[@]} -eq 0 ]]; then
+      return 1
+    fi
+    eval "$varname=(\"\${dir_files[@]}\")"
+    return 0
+  }
+
+  while true; do
+    local rc path dir
+
+    ui_browse_for_image_folder "$varname" "${allowed_exts[@]}"
+    rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+      return 0
+    elif [[ "$rc" -eq 1 ]]; then
+      return 1
+    fi
+
+    ui_clear
+    echo ""
+
+    ui_prompt "$message" _MANGO_FILE_INPUT
+    local raw="$_MANGO_FILE_INPUT"
+    [[ -z "$raw" ]] && continue
+
+    path=$(_mango_expand_path "$raw")
+    if [[ ! -e "$path" ]]; then
+      ui_message error "Not found: ${raw}"
+      echo ""
+      continue
+    fi
+    if [[ -d "$path" ]]; then
+      dir="$path"
+    elif [[ -f "$path" ]]; then
+      dir="$(dirname "$path")"
+    else
+      ui_message error "Not a file or folder: ${raw}"
+      echo ""
+      continue
+    fi
+    if _mango_load_images_from_dir "$dir"; then
+      return 0
+    fi
+    ui_message error "No matching images in folder: ${dir}"
+    echo ""
+  done
+}
+
 ui_conversion_preview() {
   local input="$1"
   local output="$2"
@@ -1174,6 +1508,30 @@ ui_conversion_preview() {
   ui_box_line "  ${MANGO_DIM}From:${MANGO_RESET}  ${MANGO_WHITE}${in_base}${MANGO_RESET}  ${MANGO_DIM}${in_size}${MANGO_RESET}"
   ui_box_line "  ${MANGO_DIM}       ${MANGO_FG_MANGO}↓${MANGO_RESET}"
   ui_box_line "  ${MANGO_DIM}To:${MANGO_RESET}    ${MANGO_GREEN}${out_base}${MANGO_RESET}  ${MANGO_DIM}.${out_ext}${MANGO_RESET}"
+  ui_box_close
+  echo ""
+}
+
+ui_conversion_preview_multi() {
+  local output="$1"
+  local label="$2"
+  shift 2
+  local -a files=("$@")
+  local n=${#files[@]}
+  local out_base first
+  out_base=$(basename "$output")
+  first=$(basename "${files[0]}")
+
+  ui_box_open "$label"
+  if [[ "$n" -eq 1 ]]; then
+    local in_size
+    in_size=$(_mango_file_size "${files[0]}")
+    ui_box_line "  ${MANGO_DIM}From:${MANGO_RESET}  ${MANGO_WHITE}${first}${MANGO_RESET}  ${MANGO_DIM}${in_size}${MANGO_RESET}"
+  else
+    ui_box_line "  ${MANGO_DIM}From:${MANGO_RESET}  ${MANGO_WHITE}${n} images${MANGO_RESET}  ${MANGO_DIM}in $(basename "$(dirname "${files[0]}")")${MANGO_RESET}"
+  fi
+  ui_box_line "  ${MANGO_DIM}       ${MANGO_FG_MANGO}↓${MANGO_RESET}"
+  ui_box_line "  ${MANGO_DIM}To:${MANGO_RESET}    ${MANGO_GREEN}${out_base}${MANGO_RESET}  ${MANGO_DIM}.pdf${MANGO_RESET}"
   ui_box_close
   echo ""
 }
@@ -1234,4 +1592,45 @@ ui_suggest_output() {
   base=$(basename "$input")
   base="${base%.*}"
   echo "${dir}/${base}.${new_ext}"
+}
+
+# Unique dated name for multi-file outputs: merged_pdf_2026-08-27_162745.pdf
+ui_suggest_merged_output() {
+  local dir="$1"
+  local prefix="${2:-merged_pdf}"
+  local ext="${3:-pdf}"
+  local stamp candidate n=0
+  stamp=$(date '+%Y-%m-%d_%H%M%S')
+  candidate="${dir}/${prefix}_${stamp}.${ext}"
+  while [[ -e "$candidate" ]]; do
+    n=$((n + 1))
+    candidate="${dir}/${prefix}_${stamp}_${n}.${ext}"
+  done
+  printf '%s' "$candidate"
+}
+
+# Resolve a typed output: bare names land next to the source folder; add .ext if missing.
+ui_resolve_output_path() {
+  local raw="$1"
+  local base_dir="$2"
+  local default_ext="${3:-pdf}"
+  local path
+
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  raw="${raw%"${raw##*[![:space:]]}"}"
+  [[ -n "$raw" ]] || {
+    printf '%s' ""
+    return 1
+  }
+
+  if [[ "$raw" == */* || "$raw" == ~* ]]; then
+    path=$(_mango_expand_path "$raw")
+  else
+    path="${base_dir}/${raw}"
+  fi
+
+  if [[ "$path" != *.* ]]; then
+    path="${path}.${default_ext}"
+  fi
+  printf '%s' "$path"
 }

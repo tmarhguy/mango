@@ -4,13 +4,15 @@ MANGO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=../lib/mango-cli.sh
 source "$MANGO_ROOT/lib/mango-cli.sh"
 usage() {
-  mango_usage "jpg-to-pdf INPUT -o OUTPUT" "Convert an image to PDF."
+  mango_usage "jpg-to-pdf INPUT [INPUT...] -o OUTPUT" \
+    "Convert images (or a folder of images) to one PDF."
 }
 main() {
   mango_parse_args usage "$@" || return 0
-  mango_require_input "$MANGO_INPUT"
+  mango_require_inputs
   [[ -n "$MANGO_OUTPUT" ]] || mango_die "Output path is required (-o)."
   require_python_pkg pymupdf fitz
-  mango_run_python "$MANGO_ROOT/tools/pdf/jpg_to_pdf.py" "$MANGO_INPUT" -o "$(mango_abs_path "$MANGO_OUTPUT")"
+  mango_run_python "$MANGO_ROOT/tools/pdf/jpg_to_pdf.py" \
+    "${MANGO_INPUTS[@]}" -o "$(mango_abs_path "$MANGO_OUTPUT")"
 }
 main "$@"

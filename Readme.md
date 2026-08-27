@@ -104,7 +104,7 @@ A complete offline alternative to tools like iLovePDF.
   - [ ] `word-to-pdf`: Convert DOC/DOCX to PDF.
   - [ ] `excel-to-pdf`: Convert EXCEL to PDF.
   - [ ] `ppt-to-pdf`: Convert PPTX to PDF.
-  - [x] `jpg-to-pdf`: Convert images to PDF.
+  - [x] `jpg-to-pdf`: Convert a folder of images into one PDF.
   - [ ] `html-to-pdf`: Convert webpages to PDF via URL.
 - **Optimization:**
   - [x] `compress-pdf`: Reduce file size (Ghostscript or pymupdf fallback).
@@ -151,6 +151,16 @@ curl -fsSL https://raw.githubusercontent.com/tmarhguy/tools/main/setup.sh | bash
 ```bash
 git clone https://github.com/tmarhguy/tools.git && cd tools
 ./setup.sh
+```
+
+**Uninstall:**
+
+```bash
+mango uninstall              # interactive (wrappers; asks about install dir)
+mango uninstall --purge      # full wipe, no prompts
+mango uninstall --keep-data  # remove commands only; keep ~/.local/share/mango
+# or from a clone:
+./uninstall.sh --yes
 ```
 
 ---

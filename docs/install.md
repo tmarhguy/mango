@@ -194,6 +194,35 @@ export PATH="$PATH:/path/to/tools/bin"
 
 ---
 
+## Uninstall
+
+```bash
+mango uninstall
+mango uninstall --purge       # wrappers + ~/.local/share/mango, no prompts
+mango uninstall --keep-data   # remove PATH commands only
+```
+
+From a clone (same script):
+
+```bash
+./uninstall.sh
+./uninstall.sh --yes
+./uninstall.sh --purge
+```
+
+That removes every Mango wrapper under `~/.local/bin` (including ones pointed at a git clone), strips the PATH block from your shell config, and can delete the offline install at `~/.local/share/mango`.
+
+**Fresh production reinstall test:**
+
+```bash
+mango uninstall --purge
+hash -r
+curl -fsSL https://raw.githubusercontent.com/tmarhguy/mango/main/setup.sh | bash -s -- --yes --link
+mango doctor
+```
+
+---
+
 ## Platform notes
 
 ### macOS

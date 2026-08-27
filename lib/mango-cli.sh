@@ -11,6 +11,7 @@ fi
 source "$MANGO_ROOT/lib/mango-deps.sh"
 
 MANGO_INPUT=""
+MANGO_INPUTS=()
 MANGO_OUTPUT=""
 MANGO_MINIFY=0
 MANGO_DECODE=0
@@ -59,6 +60,31 @@ mango_require_input() {
   MANGO_INPUT="$path"
 }
 
+mango_require_inputs() {
+  local -a raw=()
+  if [[ $# -gt 0 ]]; then
+    raw=("$@")
+  elif [[ ${#MANGO_INPUTS[@]} -gt 0 ]]; then
+    raw=("${MANGO_INPUTS[@]}")
+  elif [[ -n "$MANGO_INPUT" ]]; then
+    raw=("$MANGO_INPUT")
+  fi
+  [[ ${#raw[@]} -gt 0 ]] || mango_die "Input file or folder is required."
+
+  local -a resolved=()
+  local path
+  for path in "${raw[@]}"; do
+    path="$(mango_abs_path "$path")"
+    if [[ -d "$path" || -f "$path" ]]; then
+      resolved+=("$path")
+    else
+      mango_die "Input not found: $path"
+    fi
+  done
+  MANGO_INPUTS=("${resolved[@]}")
+  MANGO_INPUT="${MANGO_INPUTS[0]}"
+}
+
 mango_default_output() {
   local input="$1" new_ext="$2"
   local dir base
@@ -91,8 +117,16 @@ mango_parse_io() {
     esac
   done
   if [[ ${#positional[@]} -gt 0 ]]; then
-    [[ -z "$MANGO_INPUT" ]] && MANGO_INPUT="${positional[0]}"
-    [[ -z "$MANGO_OUTPUT" && ${#positional[@]} -ge 2 ]] && MANGO_OUTPUT="${positional[1]}"
+    if [[ -z "$MANGO_OUTPUT" && ${#positional[@]} -eq 2 ]]; then
+      [[ -z "$MANGO_INPUT" ]] && MANGO_INPUT="${positional[0]}"
+      MANGO_OUTPUT="${positional[1]}"
+      MANGO_INPUTS=("${positional[0]}")
+    else
+      [[ -z "$MANGO_INPUT" ]] && MANGO_INPUT="${positional[0]}"
+      MANGO_INPUTS=("${positional[@]}")
+    fi
+  elif [[ -n "$MANGO_INPUT" ]]; then
+    MANGO_INPUTS=("$MANGO_INPUT")
   fi
   return 0
 }

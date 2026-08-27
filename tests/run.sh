@@ -60,6 +60,8 @@ fi
 
 if [[ "$RUN_SMOKE" -eq 1 ]]; then
   echo ""
+  "$ROOT/tests/test_install_uninstall.sh"
+  echo ""
   "$ROOT/tests/smoke.sh"
 fi
 
