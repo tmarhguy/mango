@@ -30,3 +30,4 @@ tests/fixtures/
 /*.mkv
 /*.webm
 /*.avi
+/build/

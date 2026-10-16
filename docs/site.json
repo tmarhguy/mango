@@ -1,0 +1,20 @@
+{
+  "name": "Mango",
+  "label": "Documentation",
+  "title": "Offline tools for the terminal",
+  "description": "Command-line tools that convert video, PDFs, and images on your own machine, behind one menu named mango.",
+  "url": "",
+  "image": "",
+  "about": "#about",
+  "repository": "https://github.com/tmarhguy/mango",
+  "website": "",
+  "source": "https://github.com/tmarhguy/mango/blob/main/docs/index.adoc",
+  "groups": {
+    "0": "Documentation",
+    "1": "Author"
+  },
+  "accent": "#b45309",
+  "accentDark": "#fdba74",
+  "branch": "main",
+  "hero": null
+}

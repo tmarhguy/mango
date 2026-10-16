@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="174" viewBox="0 0 920 174" role="img" aria-labelledby="title desc">
+<title id="title">What mango does</title>
+<desc id="desc">The menu picks a tool. The tool runs on your machine.</desc>
+<rect x="1" y="1" width="918" height="172" rx="12" fill="#fffdfb" stroke="#e7e5e4"/>
+<text x="28" y="32" fill="#78716c" font-family="Georgia, 'Iowan Old Style', serif" font-size="13">What mango does</text>
+<text x="28" y="56" fill="#1c1917" font-family="Georgia, 'Iowan Old Style', serif" font-size="16">The menu picks a tool. The tool runs on your machine.</text>
+<rect x="24.0" y="76" width="156.8" height="76" rx="8" fill="#fff" stroke="#e7e5e4"/>
+<rect x="24.5" y="84" width="3" height="60" rx="1.5" fill="#b45309"/>
+<text x="40.0" y="104" fill="#b45309" font-family="ui-monospace,Menlo,monospace" font-size="11">01</text>
+<text x="40.0" y="124" fill="#1c1917" font-family="Georgia, serif" font-size="15">Menu</text>
+<text x="40.0" y="140" fill="#57534e" font-family="Arial,Helvetica,sans-serif" font-size="11">Type mango</text>
+<rect x="202.8" y="76" width="156.8" height="76" rx="8" fill="#fff" stroke="#e7e5e4"/>
+<rect x="203.3" y="84" width="3" height="60" rx="1.5" fill="#b45309"/>
+<text x="218.8" y="104" fill="#b45309" font-family="ui-monospace,Menlo,monospace" font-size="11">02</text>
+<text x="218.8" y="124" fill="#1c1917" font-family="Georgia, serif" font-size="15">A job</text>
+<text x="218.8" y="140" fill="#57534e" font-family="Arial,Helvetica,sans-serif" font-size="11">Video, PDF, or image</text>
+<rect x="381.6" y="76" width="156.8" height="76" rx="8" fill="#fff" stroke="#e7e5e4"/>
+<rect x="382.1" y="84" width="3" height="60" rx="1.5" fill="#b45309"/>
+<text x="397.6" y="104" fill="#b45309" font-family="ui-monospace,Menlo,monospace" font-size="11">03</text>
+<text x="397.6" y="124" fill="#1c1917" font-family="Georgia, serif" font-size="15">The files</text>
+<text x="397.6" y="140" fill="#57534e" font-family="Arial,Helvetica,sans-serif" font-size="11">You confirm both paths</text>
+<rect x="560.4" y="76" width="156.8" height="76" rx="8" fill="#fff" stroke="#e7e5e4"/>
+<rect x="560.9" y="84" width="3" height="60" rx="1.5" fill="#b45309"/>
+<text x="576.4" y="104" fill="#b45309" font-family="ui-monospace,Menlo,monospace" font-size="11">04</text>
+<text x="576.4" y="124" fill="#1c1917" font-family="Georgia, serif" font-size="15">The tool</text>
+<text x="576.4" y="140" fill="#57534e" font-family="Arial,Helvetica,sans-serif" font-size="11">ffmpeg or Ghostscript</text>
+<rect x="739.2" y="76" width="156.8" height="76" rx="8" fill="#fff" stroke="#e7e5e4"/>
+<rect x="739.7" y="84" width="3" height="60" rx="1.5" fill="#b45309"/>
+<text x="755.2" y="104" fill="#b45309" font-family="ui-monospace,Menlo,monospace" font-size="11">05</text>
+<text x="755.2" y="124" fill="#1c1917" font-family="Georgia, serif" font-size="15">The result</text>
+<text x="755.2" y="140" fill="#57534e" font-family="Arial,Helvetica,sans-serif" font-size="11">A file, still local</text>
+<path d="M181.8 114.0 h18.0" fill="none" stroke="#b45309" stroke-width="1.5"/>
+<path d="M197.8 110.5 l5 3.5 -5 3.5" fill="#b45309"/>
+<path d="M360.6 114.0 h18.0" fill="none" stroke="#b45309" stroke-width="1.5"/>
+<path d="M376.6 110.5 l5 3.5 -5 3.5" fill="#b45309"/>
+<path d="M539.4 114.0 h18.0" fill="none" stroke="#b45309" stroke-width="1.5"/>
+<path d="M555.4 110.5 l5 3.5 -5 3.5" fill="#b45309"/>
+<path d="M718.2 114.0 h18.0" fill="none" stroke="#b45309" stroke-width="1.5"/>
+<path d="M734.2 110.5 l5 3.5 -5 3.5" fill="#b45309"/>
+</svg>

@@ -1,0 +1,35 @@
+= Mango, offline tools for the terminal
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectlinks:
+:icons!:
+:stylesheet!:
+:webfonts!:
+:docinfo: shared
+:experimental:
+:imagesdir: images
+
+[#overview]
+[preface]
+== Offline tools for the terminal
+
+Mango is a set of command-line tools for jobs that should not need a website: turn a video into a GIF, merge or compress a PDF, shrink an image. Everything runs on your machine. Type `mango` and a menu opens. Arrow keys pick a category, you confirm the input and the output, and the tool runs.
+
+.The menu, then a local tool, then a file
+image::tool-flow.svg[Mango flow. The menu then a video PDF or image job then confirmed paths then ffmpeg or Ghostscript then a file that stays on the machine.,width=800]
+
+.The menu that opens when you type mango
+image::main-menu.png[Mango main menu. Categories cover video PDF and image tools.,width=640]
+
+[source,sh]
+----
+./setup.sh --link --yes
+mango
+mango doctor
+----
+
+`./setup.sh --link --yes` puts `mango` and the individual tools, such as `to_gif` and `merge-pdf`, on your `PATH`. `mango doctor` checks that ffmpeg, Ghostscript, and the other dependencies are present. The tool list and flags live in the repository link:https://github.com/tmarhguy/tools[README].
+
+include::theme/about.adoc[]
